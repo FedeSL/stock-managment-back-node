@@ -50,6 +50,30 @@ const getVentasByArticulo = async (req, res) => {
     }
 }
 
+const getVentasByArticuloAndPage = async (req, res) => {
+    console.log(req);
+    const { pagina, elementosPorPagina, idArticulo } = req.body;
+    const offset = (pagina - 1) * elementosPorPagina;
+
+    try {
+        const ventasByPage = await Venta.findAndCountAll({
+            limit: elementosPorPagina,
+            offset: offset,
+            include: [{
+                model: DetalleVenta,
+                as: 'detalleVenta',
+                where: { articuloId: idArticulo },
+                required: true
+            }],
+            order: [['fecha', 'DESC']]
+        });
+        console.log(JSON.stringify(ventasByPage));
+        res.status(200).json(ventasByPage);
+    } catch (error) {
+        res.status(500).send(err.message);
+    }
+}
+
 const getVentasByMonths = async (req, res) => {
     const añoActual = new Date().getFullYear();
     try {
@@ -100,18 +124,16 @@ const addVentaByArticulo = async (req, res) => {
             total: precio * cantidad
         }, { transaction: t });
 
-        const stock = await Stock.findByPk(idArticulo, {transaction: t});
+        const stock = await Stock.findByPk(idArticulo, {
+            transaction: t
+        });
 
         if(stock) {
             if(stock.cantidad < cantidad) {
                 throw new Error("La unidades vendidas superan el stock disponible");
             }
-            const stockActualizado = await Stock.update({
-                cantidad: stock.cantidad - cantidad
-            }, {
-                where: {
-                    articuloId: idArticulo
-                },
+            const stockActualizado = await stock.decrement('cantidad', {
+                by: cantidad,
                 transaction: t
             })
         }
@@ -129,9 +151,157 @@ const addVentaByArticulo = async (req, res) => {
     }
 }
 
+const editVenta = async (req, res) => {
+
+    const {
+        idVenta,
+        idDetalleVenta,
+        fecha,
+        cantidad,
+        precio
+    } = req.body;
+    const t = await sequelize.transaction();
+
+    let stockResponse = {};
+    let detalleResponse = {};
+
+    try {
+        const venta = await Venta.findByPk(idVenta, {
+            transaction: t
+        });
+
+        if (venta) {
+            const ventaActualizada = await venta.update({
+                fecha: fecha
+            }, {
+                where: {
+                    idVenta: idVenta
+                },
+                returning: true,
+                plain: true,
+                transaction: t
+            });
+            console.log("ventaActualizada: ", ventaActualizada.dataValues);
+
+            const detalleVentaById = await DetalleVenta.findByPk(idDetalleVenta, {
+                transaction: t
+            });
+
+            const cantidadPrevia = detalleVentaById.cantidad;
+
+            if (detalleVentaById) {
+                const detalleVentaUpdated = await detalleVentaById.update({
+                    cantidad: cantidad,
+                    precioUnitario: precio,
+                    total: precio * cantidad
+                }, {
+                    where: {
+                        idDetalleVenta: idDetalleVenta
+                    },
+                    returning: true,
+                    plain: true,
+                    transaction: t
+                })
+                console.log("------------------> ", detalleVentaUpdated);
+
+                detalleResponse = detalleVentaUpdated.dataValues;
+                const id = detalleVentaUpdated.dataValues.articuloId;
+
+                const stock = await Stock.findByPk(id, {
+                    transaction: t
+                });
+
+                console.log("Cantidad de stock: ", stock.cantidad);
+                console.log("Cantidad actualizada de la venta: ", cantidad);
+                console.log("Cantidad previa de la venta: ", cantidadPrevia);
+        
+                if (stock) {
+                    if(cantidadPrevia < cantidad) {
+
+                        if(stock.cantidad - (cantidad - cantidadPrevia) < 0) {
+                            throw new Error("La unidades vendidas superan el stock disponible");
+                        } 
+
+                        const stockActualizado = await stock.decrement('cantidad', {
+                            by: cantidad - cantidadPrevia,
+                            transaction: t
+                        });
+                    } else {
+                        const stockActualizado = await stock.increment('cantidad', {
+                            by: cantidadPrevia - cantidad,
+                            transaction: t
+                        });
+                    }
+                    stockResponse = stock;
+                }
+            }          
+
+            await t.commit();
+
+            res.status(200).json({
+                status: 200,
+                venta: ventaActualizada.dataValues,
+                detalleVenta: detalleResponse,
+                stock: stockResponse
+            });
+
+
+        } else {
+            return res.status(404).json({
+                status: 404,
+                message: 'Venta no encontrada'
+            });
+        }     
+
+    } catch (err) {
+        await t.rollback();
+        res.status(500).send(err.message);
+    }
+}
+
+const deleteDetalleVenta = async (req, res) => {
+    const {
+        id
+    } = req.params;
+    const t = await sequelize.transaction();
+
+    try {
+        const detalleVenta = await DetalleVenta.findByPk(id, {
+            transaction: t
+        });
+
+        if (detalleVenta) {
+            const detalleVentaDeleted = await detalleVenta.destroy({
+                transaction: t
+            });
+
+            const stock = await Stock.findByPk(detalleVenta.articuloId, {
+                transaction: t
+            });
+
+            if (stock) {
+                const stockActualizado = await stock.increment('cantidad', {
+                    by: detalleVenta.cantidad,
+                    transaction: t
+                });
+            }
+        }
+
+        await t.commit();
+        res.status(200).send("Compra eliminada correctamente");
+
+    } catch (err) {
+        await t.rollback();
+        res.status(500).send(err.message);
+    }
+}
+
 module.exports = { 
     getVentas,
     getVentasByArticulo,
+    getVentasByArticuloAndPage,
     getVentasByMonths,
-    addVentaByArticulo
+    addVentaByArticulo,
+    editVenta,
+    deleteDetalleVenta
 }

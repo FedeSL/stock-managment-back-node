@@ -13,6 +13,7 @@ const {
     saveArticulo, 
     saveArticuloSinCompra,
     updateArticulo, 
+    deactivateArticulo,
     deleteArticulo 
 } = require('../controllers/articulo.controller');
 
@@ -23,21 +24,28 @@ router.get('/getTopArticulosVendidos', getTop10ArticulosVendidos);
 router.post('/saveArticulo', saveArticulo);
 router.post('/saveArticuloSinCompra', saveArticuloSinCompra);
 router.put('/updateArticulo', updateArticulo);
+router.put('/deactivateArticulo', deactivateArticulo);
 router.delete('/deleteArticulo/:id', deleteArticulo);
 
 //RUTAS COMPRAS
-const { getCompras, getComprasByArticulo, getComprasByMonths, addCompraByArticulo } = require('../controllers/compra.controller');
+const { getCompras, getComprasByArticulo, getComprasByArticuloAndPage, getComprasByMonths, addCompraByArticulo, editCompra, deleteDetalleCompra } = require('../controllers/compra.controller');
 router.get('/compras', getCompras);
 router.post('/comprasByArticulo', getComprasByArticulo);
+router.post('/comprasByArticuloAndPage', getComprasByArticuloAndPage);
 router.get('/comprasByMonths', getComprasByMonths);
 router.post('/addCompraByArticulo', addCompraByArticulo);
+router.post('/editCompra', editCompra);
+router.delete('/deleteDetalleCompra/:id', deleteDetalleCompra);
 
 //RUTAS VENTAS
-const { getVentas, getVentasByArticulo, getVentasByMonths, addVentaByArticulo } = require('../controllers/venta.controller');
+const { getVentas, getVentasByArticulo, getVentasByArticuloAndPage, getVentasByMonths, addVentaByArticulo, editVenta, deleteDetalleVenta } = require('../controllers/venta.controller');
 router.get('/ventas', getVentas);
 router.post('/ventasByArticulo', getVentasByArticulo);
+router.post('/ventasByArticuloAndPage', getVentasByArticuloAndPage);
 router.get('/ventasByMonths', getVentasByMonths);
 router.post('/addVentaByArticulo', addVentaByArticulo);
+router.post('/editVenta', editVenta);
+router.delete('/deleteDetalleVenta/:id', deleteDetalleVenta);
 
 //RUTAS STOCK
 const { getStockByArticulo, updateStockByArticulo} = require('../controllers/stock.controller');

@@ -37,28 +37,38 @@ const getArticulos = async (req, res) => {
 
 const getArticulosByPage = async (req, res) => {
     try {
-        const {pagina, elementosPorPagina, soloSinStock, ocultarSinStock, bajoStock, mostrarDesactivados, orderingValue} = req.body;
+        const {pagina, elementosPorPagina, searchFilter, soloSinStock, ocultarSinStock, bajoStock, mostrarDesactivados, orderingValue} = req.body;
         const offset = (pagina - 1) * elementosPorPagina;
         let columnOrdering = 'descripcion';
         let articuloConditions = {};
         let stockConditions = {};
         let order = orderingValue
 
+        //Se ordena alfabéticamente por descripción
         if(orderingValue == 'ASC' || orderingValue == 'DESC') {
             columnOrdering = 'descripcion'
         }
 
-        // if(orderingValue == 'LESS' || orderingValue == 'GREATER') {
-        //     if(orderingValue == 'LESS') {
-        //         order = 'ASC'
-        //     } else {
-        //         order = 'DESC'
-        //     }
-        //     columnOrdering = sequelize.col('stock.cantidad')
-        // }
+        //Se ordena por cantidad de stock
+        if(orderingValue == 'LESS' || orderingValue == 'GREATER') {
+            if(orderingValue == 'LESS') {
+                order = 'ASC'
+            } else {
+                order = 'DESC'
+            }
+            columnOrdering = sequelize.literal('"stock.cantidad"')
+        }
 
         if(!mostrarDesactivados) {
             articuloConditions.estado = 1
+        } else {
+            articuloConditions.estado = 0
+        }
+
+        if(searchFilter !== '') {
+            articuloConditions.descripcion = {
+                [Op.iLike]: `%${searchFilter}%`
+            }
         }
 
         if(ocultarSinStock) {
@@ -174,9 +184,11 @@ const saveArticuloSinCompra = async (req, res) => {
         }, { transaction: t });
 
         await t.commit();
+        console.log(nuevoArticulo);
         res.status(201).json({
             status: 201,
-            articulo: nuevoArticulo
+            articulo: nuevoArticulo,
+            stock: stock
         });
     } catch (err) {
         await t.rollback();
@@ -216,7 +228,8 @@ const saveArticulo = async (req, res) => {
 
         res.status(201).json({
             status: 201,
-            articulo: nuevoArticulo
+            articulo: nuevoArticulo,
+            stock: nuevoStock
         });
 
     } catch (error) {
@@ -270,16 +283,47 @@ const updateArticulo = async (req, res) => {
     }
 }
 
+const deactivateArticulo = async (req, res) => {
+
+    const { id } = req.body;
+    const t = await sequelize.transaction();
+
+    try {
+        const articulo = await Articulo.findByPk(id);
+        
+        if (articulo) {
+            if(articulo.estado == 0) {
+                articulo.estado = 1;
+            } else {
+                articulo.estado = 0;
+            }
+            await articulo.save({ transaction: t });
+
+            await t.commit();
+            res.status(200).json({
+                status: 200,
+                articulo: articulo
+            });
+            
+        } else {
+            res.status(404).send('Artículo no encontrado');
+        }
+    } catch (err) {
+        await t.rollback();
+        res.status(500).send(err.message);
+    }
+}
+
 // Borrar un artículo
 const deleteArticulo = async (req, res) => {
     const { id } = req.params;
     try {
         const articulo = await Articulo.findByPk(id);
         if (articulo) {
-        await articulo.destroy();
-        res.status(204).send("Articulo eliminado");
+            await articulo.destroy();
+            res.status(204).send("Articulo eliminado");
         } else {
-        res.status(404).send('Artículo no encontrado');
+            res.status(404).send('Artículo no encontrado');
         }
     } catch (err) {
         res.status(500).send(err.message);
@@ -294,5 +338,6 @@ module.exports = {
     saveArticulo, 
     saveArticuloSinCompra,
     updateArticulo, 
+    deactivateArticulo,
     deleteArticulo 
 }
