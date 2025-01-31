@@ -146,7 +146,10 @@ const addCompraByArticulo = async (req, res) => {
             transaction: t
         });
 
-        const stock = await Stock.findByPk(idArticulo, {
+        const stock = await Stock.findOne({
+            where: {
+                articuloId: idArticulo
+            },
             transaction: t
         });
 
@@ -155,6 +158,7 @@ const addCompraByArticulo = async (req, res) => {
                 by: cantidad,
                 transaction: t
             });
+            console.log(stockActualizado);
         }
 
         await t.commit();
@@ -224,7 +228,10 @@ const editCompra = async (req, res) => {
                 detalleResponse = detalleCompraUpdated[1].dataValues;
                 const id = detalleCompraUpdated[1].dataValues.articuloId;
 
-                const stock = await Stock.findByPk(id, {
+                const stock = await Stock.findOne({
+                    where: {
+                        articuloId: id
+                    },
                     transaction: t
                 });
         
@@ -283,7 +290,10 @@ const deleteDetalleCompra = async (req, res) => {
                 transaction: t
             });
 
-            const stock = await Stock.findByPk(detalleCompra.articuloId, {
+            const stock = await Stock.findOne({
+                where: {
+                    articuloId: detalleCompra.articuloId
+                },
                 transaction: t
             });
 

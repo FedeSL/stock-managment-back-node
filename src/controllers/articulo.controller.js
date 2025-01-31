@@ -232,10 +232,10 @@ const saveArticulo = async (req, res) => {
             stock: nuevoStock
         });
 
-    } catch (error) {
+    } catch (err) {
         await t.rollback();
-        console.error(error);
-        res.status(500).json({ error: error.message });
+        console.error(err);
+        res.status(500).send(err.message);
     }
 }
 

@@ -1,5 +1,5 @@
 const sequelize = require('../db');
-const { Op } = require('sequelize');
+const { Op, where } = require('sequelize');
 const DetalleVenta = require('../model/detalle-venta.model');
 const Stock = require('../model/stock.model');
 const Venta = require('../model/venta.model');
@@ -124,7 +124,10 @@ const addVentaByArticulo = async (req, res) => {
             total: precio * cantidad
         }, { transaction: t });
 
-        const stock = await Stock.findByPk(idArticulo, {
+        const stock = await Stock.findOne({
+            where: {
+                articuloId: idArticulo
+            },
             transaction: t
         });
 
@@ -207,7 +210,10 @@ const editVenta = async (req, res) => {
                 detalleResponse = detalleVentaUpdated.dataValues;
                 const id = detalleVentaUpdated.dataValues.articuloId;
 
-                const stock = await Stock.findByPk(id, {
+                const stock = await Stock.findOne({
+                    where: {
+                        articuloId: id
+                    },
                     transaction: t
                 });
 
@@ -275,7 +281,10 @@ const deleteDetalleVenta = async (req, res) => {
                 transaction: t
             });
 
-            const stock = await Stock.findByPk(detalleVenta.articuloId, {
+            const stock = await Stock.findOne({
+                where: {
+                    articuloId: detalleVenta.articuloId, 
+                },
                 transaction: t
             });
 

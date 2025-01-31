@@ -6,22 +6,29 @@
  const app = express();
  const cors = require('cors');
  
- app.use(
-     cors({
-         origin: ['http://localhost:4200']
-     })
- );
+//  app.use(
+//      cors({
+//          origin: ['http://localhost:4200']
+//      })
+//  );
+ 
  
  // Reflect the origin if it's in the allowed list or not defined (cURL, Postman, etc.)
  const corsOptions = {
-     origin: (origin, callback) => {
-         if (allowedOrigins.includes(origin) || !origin) {
-             callback(null, true);
-         } else {
-             callback(new Error('Origin not allowed by CORS'));
-         }
-     },
+    //  origin: (origin, callback) => {
+    //      if (allowedOrigins.includes(origin) || !origin) {
+    //          callback(null, true);
+    //      } else {
+    //          callback(new Error('Origin not allowed by CORS'));
+    //      }
+    //  },
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
  };
+
+ app.use(cors(corsOptions));
  
  // Enable preflight requests for all routes
  app.options('*', cors(corsOptions));

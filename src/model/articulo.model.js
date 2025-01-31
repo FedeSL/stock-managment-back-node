@@ -12,7 +12,8 @@ const Articulo = sequelize.define('Articulo', {
     },
     ean: {
         type: DataTypes.BIGINT,
-        allowNull: false
+        allowNull: false,
+        unique: true
     },
     descripcion: {
         type: DataTypes.STRING,
